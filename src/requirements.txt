@@ -1,0 +1,10 @@
+Flask==3.0.0
+flask-socketio==5.3.5
+python-socketio==5.10.0
+python-engineio==4.8.0
+python-dotenv==1.0.0
+haystack-ai==2.20.0
+google-genai-haystack==2.3.0
+mcp-haystack==1.1.0
+numpy==2.3.5
+mdit-plain==1.0.1

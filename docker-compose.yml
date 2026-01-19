@@ -1,0 +1,12 @@
+services:
+  ubuntu-novnc:
+    # Build the Docker image from the Dockerfile in the current directory
+    build: .
+    # Name the container
+    container_name: ubuntu-novnc
+    # Map port 8080 on the host to port 6080 in the container
+    ports:
+      - '8080:6080'
+      - '5000:5000'
+    # Restart the container unless it is explicitly stopped
+    restart: unless-stopped

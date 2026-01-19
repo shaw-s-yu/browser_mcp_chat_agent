@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>Web Terminal</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono',
+          monospace;
+        background: #1e1e1e;
+        color: #d4d4d4;
+        overflow: hidden;
+        height: 100vh;
+      }
+
+      .container {
+        display: flex;
+        flex-direction: row;
+        height: 100vh;
+      }
+
+      .left-pane {
+        width: 30%;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+      }
+
+      .right-pane {
+        position: relative;
+        width: 70%;
+        height: 100%;
+        border-left: 1px solid #3e3e42;
+      }
+
+      .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #1e1e1e;
+        color: #d4d4d4;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 18px;
+        z-index: 10;
+      }
+
+      .header {
+        background: #2d2d30;
+        padding: 15px 20px;
+        border-bottom: 1px solid #3e3e42;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .header h1 {
+        font-size: 18px;
+        font-weight: 500;
+      }
+
+      .status {
+        font-size: 12px;
+        color: #4ec9b0;
+      }
+
+      .status.disconnected {
+        color: #f48771;
+      }
+
+      .controls {
+        display: flex;
+        gap: 10px;
+      }
+
+      button {
+        padding: 8px 16px;
+        background: #0e639c;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        font-family: inherit;
+        transition: background 0.2s;
+      }
+
+      button:hover {
+        background: #1177bb;
+      }
+
+      button:active {
+        background: #0c5aa8;
+      }
+
+      button.danger {
+        background: #d64545;
+      }
+
+      button.danger:hover {
+        background: #e85656;
+      }
+
+      .terminal-wrapper {
+        flex: 1;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      #terminal {
+        flex: 1;
+        padding: 15px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        outline: none;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        line-height: 1.4;
+      }
+
+      .input-line {
+        display: flex;
+        margin-top: 5px;
+      }
+
+      .prompt {
+        color: #4ec9b0;
+        margin-right: 8px;
+        flex-shrink: 0;
+      }
+
+      .input-field {
+        flex: 1;
+        background: transparent;
+        border: none;
+        color: #d4d4d4;
+        font-family: inherit;
+        font-size: inherit;
+        outline: none;
+        padding: 0;
+        line-height: 1.4;
+      }
+
+      .cursor {
+        display: inline-block;
+        width: 8px;
+        height: 16px;
+        background: #d4d4d4;
+        animation: blink 1s infinite;
+        margin-left: 2px;
+      }
+
+      @keyframes blink {
+        0%,
+        50% {
+          opacity: 1;
+        }
+        51%,
+        100% {
+          opacity: 0;
+        }
+      }
+
+      .output-text {
+        color: #d4d4d4;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+
+      .error {
+        color: #f48771;
+      }
+
+      .success {
+        color: #4ec9b0;
+      }
+
+      /* Scrollbar styling */
+      #terminal::-webkit-scrollbar {
+        width: 12px;
+      }
+
+      #terminal::-webkit-scrollbar-track {
+        background: #1e1e1e;
+      }
+
+      #terminal::-webkit-scrollbar-thumb {
+        background: #464647;
+        border-radius: 6px;
+      }
+
+      #terminal::-webkit-scrollbar-thumb:hover {
+        background: #5a5a5a;
+      }
+
+      .info-box {
+        background: #252526;
+        border: 1px solid #3e3e42;
+        padding: 10px 15px;
+        margin-bottom: 10px;
+        border-radius: 4px;
+        font-size: 12px;
+        color: #858585;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="left-pane">
+        <div class="header">
+          <div>
+            <h1>🖥️ Web Terminal</h1>
+          </div>
+          <div class="status" id="status">
+            <span id="status-text">Disconnected</span>
+          </div>
+          <div class="controls">
+            <button
+              id="clear-btn"
+              onclick="clearTerminal()"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+
+        <div class="terminal-wrapper">
+          <div id="terminal"></div>
+          <div
+            class="input-line"
+            id="input-line"
+            style="display: none; padding: 0 15px 15px 15px"
+          >
+            <span class="prompt">$</span>
+            <input
+              type="text"
+              class="input-field"
+              id="input-field"
+              autofocus
+            />
+            <span class="cursor"></span>
+          </div>
+        </div>
+      </div>
+      <div class="right-pane">
+        <div class="loading-overlay" id="loading-overlay">
+          <span>Loading screen...</span>
+        </div>
+        <iframe
+          src="http://192.168.0.121:8080/vnc_lite.html?scale=true"
+          style="
+            width: 100%;
+            height: 100%;
+            border: none;
+            position: absolute;
+          "
+          allowfullscreen
+        ></iframe>
+      </div>
+    </div>
+
+    <script>
+      const socket = io()
+      let isConnected = false
+      let isTerminalReady = false
+      let buffer = ''
+
+      // ANSI to HTML converter
+      function ansiToHtml(text) {
+        // Remove ANSI escape sequences
+        text = text.replace(/\x1b\[[0-9;]*[A-Za-z]/g, '')
+        // Remove other control sequences
+        text = text.replace(/\x1b[^m]*m/g, '')
+        // Remove carriage returns (often used in progress bars)
+        text = text.replace(/\r(?![\n])/g, '')
+        return text
+      }
+
+      // Update status
+      socket.on('connect', () => {
+        console.log('Connected to server')
+        isConnected = true
+        updateStatus('Connected', false)
+        initTerminal()
+      })
+
+      socket.on('disconnect', () => {
+        console.log('Disconnected from server')
+        isConnected = false
+        isTerminalReady = false
+        updateStatus('Disconnected', true)
+        document.getElementById(
+          'input-line'
+        ).style.display = 'none'
+      })
+
+      // Terminal events
+      socket.on('terminal_initialized', (data) => {
+        console.log('Terminal initialized:', data)
+        isTerminalReady = true
+        document.getElementById(
+          'input-line'
+        ).style.display = 'flex'
+        document.getElementById('input-field').focus()
+        appendOutput(
+          'Terminal session started\n',
+          'success'
+        )
+
+        // Send initial resize
+        resizeTerminal()
+
+        // Automatically run the agent
+        const command = 'bash ./app/run_agent.sh\n'
+        socket.emit('terminal_input', { data: command })
+        appendOutput('$ ' + command, 'info')
+      })
+
+      socket.on('terminal_output', (data) => {
+        if (data.data) {
+          // Clean ANSI escape sequences before displaying
+          const cleanedData = ansiToHtml(data.data)
+          appendOutput(cleanedData)
+
+          // Hide loading overlay when the browser is launched
+          if (cleanedData.includes('Running prompt')) {
+            setTimeout(() => {
+              document.getElementById(
+                'loading-overlay'
+              ).style.display = 'none'
+            }, 3000)
+          }
+        }
+      })
+
+      socket.on('terminal_terminated', () => {
+        console.log('Terminal terminated')
+        isTerminalReady = false
+        document.getElementById(
+          'input-line'
+        ).style.display = 'none'
+        appendOutput(
+          '\n[Terminal session ended]\n',
+          'error'
+        )
+      })
+
+      // Initialize terminal
+      function initTerminal() {
+        if (!isConnected) {
+          alert('Not connected to server')
+          return
+        }
+        socket.emit('init_terminal', { shell: '/bin/bash' })
+      }
+
+      // Clear terminal
+      function clearTerminal() {
+        document.getElementById('terminal').innerHTML =
+          '<div class="info-box">💡 Terminal cleared</div>'
+        buffer = ''
+      }
+
+      // Append output to terminal
+      function appendOutput(text, className = '') {
+        const terminal = document.getElementById('terminal')
+        const div = document.createElement('div')
+        div.className =
+          'output-text' + (className ? ' ' + className : '')
+        div.textContent = text
+        terminal.appendChild(div)
+        terminal.scrollTop = terminal.scrollHeight
+      }
+
+      // Input field handling
+      document
+        .getElementById('input-field')
+        .addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') {
+            const input = e.target.value
+            if (isTerminalReady) {
+              // Display the command
+              appendOutput('$ ' + input + '\n')
+              // Send to server
+              socket.emit('terminal_input', {
+                data: input + '\n',
+              })
+              // Clear input
+              e.target.value = ''
+            }
+          }
+        })
+
+      // Handle Ctrl+C
+      document
+        .getElementById('input-field')
+        .addEventListener('keydown', (e) => {
+          if (e.ctrlKey && e.key === 'c') {
+            e.preventDefault()
+            if (isTerminalReady) {
+              socket.emit('terminal_input', {
+                data: '\x03',
+              }) // Send Ctrl+C
+            }
+          }
+        })
+
+      // Update status indicator
+      function updateStatus(text, isError) {
+        const statusEl = document.getElementById('status')
+        const statusText =
+          document.getElementById('status-text')
+        statusText.textContent = text
+        if (isError) {
+          statusEl.classList.add('disconnected')
+        } else {
+          statusEl.classList.remove('disconnected')
+        }
+      }
+
+      // Resize terminal
+      function resizeTerminal() {
+        if (!isTerminalReady) return
+
+        const terminal = document.getElementById('terminal')
+        const lines = Math.floor(terminal.clientHeight / 16) // ~16px per line
+        const cols = Math.floor(terminal.clientWidth / 8) // ~8px per char
+
+        socket.emit('terminal_resize', {
+          rows: Math.max(24, lines),
+          cols: Math.max(80, cols),
+        })
+      }
+
+      // Resize on window change
+      window.addEventListener('resize', resizeTerminal)
+
+      // Request initial connection
+      window.addEventListener('load', () => {
+        console.log('Page loaded')
+      })
+    </script>
+  </body>
+</html>
