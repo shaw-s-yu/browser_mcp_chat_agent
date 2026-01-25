@@ -12,8 +12,9 @@ import threading
 import queue
 import json
 import platform
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, Response
 from flask_socketio import SocketIO, emit, join_room, leave_room
+from flask_cors import CORS
 import logging
 
 # Configure logging
@@ -22,7 +23,21 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-change-this'
-socketio = SocketIO(app, cors_allowed_origins="*")
+
+# Enable CORS for all routes
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+
+# Configure Flask-SocketIO with CORS
+socketio = SocketIO(app, cors_allowed_origins="*", engineio_logger=False, socketio_logger=False)
+
+# Add headers to all responses to allow framing
+@app.after_request
+def set_headers(response):
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS, PUT, DELETE'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    response.headers['X-Frame-Options'] = 'ALLOWALL'
+    return response
 
 # Store active terminal sessions
 terminal_sessions = {}
@@ -192,6 +207,15 @@ def index():
 def handle_connect():
     """Handle client connection."""
     logger.info(f"Client connected: {request.sid}")
+    
+    # Kill any existing Google Chrome processes
+    try:
+        subprocess.run(['pkill', '-9', 'chrome'], 
+                        capture_output=True, timeout=5)
+        logger.info("Killed existing Chrome processes")
+    except Exception as e:
+        logger.warning(f"Could not kill Chrome processes: {e}")
+    
     emit('response', {'data': f'Connected to terminal server ({platform.system()})'})
 
 

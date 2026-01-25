@@ -9,6 +9,8 @@ RUN echo '#!/bin/sh' > /usr/sbin/policy-rc.d && \
     echo 'exit 101' >> /usr/sbin/policy-rc.d && \
     chmod +x /usr/sbin/policy-rc.d && \
     \
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get clean && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
     software-properties-common \
@@ -52,6 +54,10 @@ RUN useradd -m -s /bin/bash -G sudo user && \
 # Copy the application source code
 COPY --chown=user:user src /home/user/app
 
+# Convert line endings for all shell scripts immediately after copying
+RUN find /home/user/app -name "*.sh" -exec sed -i 's/\r$//' {} \; && \
+    find /home/user/app -name "*.sh" -exec chmod +x {} \;
+
 # Create a virtual environment
 ENV VIRTUAL_ENV=/home/user/app/venv
 RUN python3.11 -m venv $VIRTUAL_ENV
@@ -62,8 +68,12 @@ RUN pip install --no-cache-dir -r /home/user/app/requirements.txt
 
 # Copy the entrypoint and helper scripts into the container
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-# Make the scripts executable
-RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Convert ALL line endings (including entrypoint) and make executable
+RUN sed -i 's/\r$//' /usr/local/bin/entrypoint.sh && \
+    find /home/user/app -name "*.sh" -exec sed -i 's/\r$//' {} \; && \
+    find /home/user/app -name "*.sh" -exec chmod +x {} \; && \
+    chmod +x /usr/local/bin/entrypoint.sh
 
 # Expose the noVNC port
 EXPOSE 6080
