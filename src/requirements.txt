@@ -9,3 +9,4 @@ google-genai-haystack==2.3.0
 mcp-haystack==1.1.0
 numpy==2.3.5
 mdit-plain==1.0.1
+cx_Oracle
