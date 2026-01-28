@@ -4,6 +4,8 @@
 .env.*.local
 env
 env/
+./src/.env
+
 
 # Python
 __pycache__/
