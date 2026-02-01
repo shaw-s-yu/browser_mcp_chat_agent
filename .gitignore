@@ -49,6 +49,9 @@ Thumbs.db
 *.log
 *.logs
 
+# Data files
+src/db/data/
+
 # Database
 *.db
 *.sqlite

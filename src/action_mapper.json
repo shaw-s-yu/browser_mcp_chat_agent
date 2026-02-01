@@ -1,0 +1,6 @@
+{
+    "RUN_TASK_ACTION":{
+        "prompt_file":"submit_task.md",
+        "sql":"get_tasks.sql"
+    }
+}
