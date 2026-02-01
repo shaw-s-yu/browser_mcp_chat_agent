@@ -228,11 +228,7 @@
         
         function submitForm() {
             const form = document.getElementById('taskForm');
-            if (form.checkValidity()) {
-                openModal();
-            } else {
-                alert('Please fill in all required fields');
-            }
+            openModal();
         }
         
         function openModal() {

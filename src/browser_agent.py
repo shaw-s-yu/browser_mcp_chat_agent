@@ -32,7 +32,8 @@ class BrowserAgent:
         
         command = 'DISPLAY=:1 npx @playwright/mcp@latest --no-sandbox --viewport-size="1280,800"'
         # 1. Initialize the MCP server and toolset for browser control
-        server_info = StdioServerInfo(command="bash", args=["-c", command])
+        # server_info = StdioServerInfo(command="bash", args=["-c", command])
+        server_info = StdioServerInfo(command="npx", args=["@playwright/mcp@latest"])
         toolset = MCPToolset(
             server_info=server_info,
             tool_names=["browser_navigate", "browser_snapshot", "browser_click", "browser_type", "browser_navigate_back", "browser_wait_for"]

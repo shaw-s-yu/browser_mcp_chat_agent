@@ -5,7 +5,7 @@ Navigate into a browser page and submit task data.
 RUN_TASK_ACTION
 
 ### Template
-1. navigate into file:///D:/export/htdocs/ai_gents/browser_mcp_chat_agent/src/templates/test.html
+1. navigate into http://localhost:5000/test
 2. enter <task_cd> into Task CD input box
 3. enter <description> into Description input box
 4. enter <sub_task_cd> into Sub Task CD input box

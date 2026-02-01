@@ -202,6 +202,11 @@ def index():
     """Serve the main terminal page."""
     return render_template('terminal.html')
 
+@app.route('/test')
+def test():
+    """Serve the main terminal page."""
+    return render_template('test.html')
+
 
 @socketio.on('connect')
 def handle_connect():
