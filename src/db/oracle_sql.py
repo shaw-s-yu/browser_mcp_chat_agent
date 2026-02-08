@@ -18,29 +18,38 @@ class OracleSQL:
         self.init_oracle()
     
     def init_oracle(self):
-        """Initialize Oracle Client - handle different environments."""
+        """Initialize Oracle Client - handle different environments (Windows, Linux, Docker)."""
         try:
-            # Try to initialize with default system paths first
+            # Try to initialize with ORACLE_HOME environment variable first
             oracle_home = os.environ.get('ORACLE_HOME')
-            if oracle_home:
-                lib_dir = os.path.join(oracle_home, 'bin')
-                if os.path.exists(lib_dir):
-                    cx_Oracle.init_oracle_client(lib_dir=lib_dir)
-            else:
-                # Try common Oracle client paths
-                common_paths = [
-                    r"C:\oracle\instantclient_21_12",
-                    r"C:\oracle\instantclient_19_20",
-                    r"C:\app\oracle\product\21c\client_1\bin",
-                    r"C:\app\db_home\bin"
-                ]
-                for path in common_paths:
-                    if os.path.exists(path):
-                        cx_Oracle.init_oracle_client(lib_dir=path)
-                        break
+            if oracle_home and os.path.exists(oracle_home):
+                cx_Oracle.init_oracle_client(lib_dir=oracle_home)
+                print(f"✓ Oracle Client initialized from ORACLE_HOME: {oracle_home}")
+                return
+            
+            # Common paths for different environments
+            common_paths = [
+                '/opt/oracle/instantclient_21_4',      # Docker Linux
+                '/opt/oracle/instantclient_19_20',     # Docker Linux (alternative)
+                r"C:\oracle\instantclient_21_12",      # Windows
+                r"C:\oracle\instantclient_19_20",      # Windows (alternative)
+                r"C:\app\oracle\product\21c\client_1\bin",  # Windows (alternative)
+                r"C:\app\db_home\bin"                  # Windows (alternative)
+            ]
+            
+            for path in common_paths:
+                if os.path.exists(path):
+                    cx_Oracle.init_oracle_client(lib_dir=path)
+                    print(f"✓ Oracle Client initialized from: {path}")
+                    return
+            
+            print("⚠ Warning: Oracle Client paths not found, attempting default initialization")
+            # Try default initialization
+            cx_Oracle.init_oracle_client()
+            
         except Exception as e:
-            print(f"Warning: Could not initialize Oracle Client: {e}")
-            # Continue anyway - cx_Oracle might still work with system paths
+            print(f"⚠ Warning: Could not initialize Oracle Client: {e}")
+            print("  Attempting connection without explicit client initialization...")
     
     def connect(self):
         """Create connection to Oracle database."""

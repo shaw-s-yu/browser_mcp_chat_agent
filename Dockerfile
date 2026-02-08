@@ -34,7 +34,7 @@ RUN add-apt-repository -y ppa:deadsnakes/ppa && \
     wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-chrome-keyring.gpg && \
     echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list && \
     apt-get update && \
-    apt-get install -y google-chrome-stable npm python3.11 python3.11-venv python3-pip
+    apt-get install -y google-chrome-stable npm python3.11 python3.11-venv python3.11-dev python3-pip build-essential unzip
 
 # Step 3: Configure Chrome wrapper and clean up
 RUN echo '#!/bin/bash' > /usr/local/bin/chrome-nosandbox && \
@@ -47,6 +47,23 @@ RUN echo '#!/bin/bash' > /usr/local/bin/chrome-nosandbox && \
     rm -rf /var/lib/apt/lists/* && \
     rm -f /usr/sbin/policy-rc.d
 
+# Step 4: Install Oracle Instant Client  
+RUN apt-get update && apt-get install -y libaio-dev && \
+    mkdir -p /opt/oracle && cd /opt/oracle && \
+    wget -q https://download.oracle.com/otn_software/linux/instantclient/214000/instantclient-basic-linux.x64-21.4.0.0.0dbru.zip && \
+    unzip -q instantclient-basic-linux.x64-21.4.0.0.0dbru.zip && \
+    rm instantclient-basic-linux.x64-21.4.0.0.0dbru.zip && \
+    chmod -R 755 /opt/oracle/instantclient_21_4 && \
+    cd /opt/oracle/instantclient_21_4 && \
+    ln -sf libclntsh.so.21.1 libclntsh.so && \
+    ln -sf libocci.so.21.1 libocci.so && \
+    ln -sf libociei.so libociei.so.21.1 && \
+    ln -sf libnnz21.so libnnz21.so.1 && \
+    echo /opt/oracle/instantclient_21_4 > /etc/ld.so.conf.d/oracle-instantclient.conf && \
+    ldconfig && \
+    ln -sf /usr/lib/x86_64-linux-gnu/libaio.so.1t64 /opt/oracle/instantclient_21_4/libaio.so.1 && \
+    ldconfig
+
 # Create a non-root user 'user' with password 'ubuntu' and add to sudo group
 RUN useradd -m -s /bin/bash -G sudo user && \
     echo "user:ubuntu" | chpasswd
@@ -58,10 +75,17 @@ COPY --chown=user:user src /home/user/app
 RUN find /home/user/app -name "*.sh" -exec sed -i 's/\r$//' {} \; && \
     find /home/user/app -name "*.sh" -exec chmod +x {} \;
 
+# Set Oracle environment variables
+ENV LD_LIBRARY_PATH=/opt/oracle/instantclient_21_4:$LD_LIBRARY_PATH
+ENV ORACLE_HOME=/opt/oracle/instantclient_21_4
+
 # Create a virtual environment
 ENV VIRTUAL_ENV=/home/user/app/venv
 RUN python3.11 -m venv $VIRTUAL_ENV
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+# Upgrade pip and setuptools in the virtual environment
+RUN pip install --upgrade pip setuptools wheel
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r /home/user/app/requirements.txt
@@ -81,7 +105,7 @@ EXPOSE 6080
 # Switch to the non-root user
 USER user
 # Set the working directory to the user's home directory
-WORKDIR /home/user
+WORKDIR /home/user/app
 
 # Set the entrypoint script to run when the container starts
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

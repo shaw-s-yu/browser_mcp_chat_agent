@@ -10,3 +10,14 @@ services:
       - '5000:5000'
     # Restart the container unless it is explicitly stopped
     restart: unless-stopped
+    # Environment variables for Oracle connection
+    environment:
+      # Oracle connection details - CONFIGURE THESE FOR YOUR ENVIRONMENT
+      ORACLE_HOST: ${ORACLE_HOST:-your_oracle_server_ip}
+      ORACLE_PORT: ${ORACLE_PORT:-1521}
+      ORACLE_SERVICE: ${ORACLE_SERVICE:-your_service_name}
+      ORACLE_USER: ${ORACLE_USER:-your_username}
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:-your_password}
+      # Oracle client configuration
+      LD_LIBRARY_PATH: /opt/oracle/instantclient_21_4:$LD_LIBRARY_PATH
+      ORACLE_HOME: /opt/oracle/instantclient_21_4

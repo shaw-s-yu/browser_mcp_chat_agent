@@ -122,6 +122,15 @@
         flex-direction: column;
       }
 
+      .button-container {
+        padding: 10px 15px;
+        border-bottom: 1px solid #3e3e42;
+        background: #2d2d30;
+        flex-shrink: 0;
+        display: flex;
+        gap: 10px;
+      }
+
       #terminal {
         flex: 1;
         padding: 15px;
@@ -240,6 +249,11 @@
         </div>
 
         <div class="terminal-wrapper">
+          <div class="button-container">
+            <button id="submit-task-btn" onclick="submitTask()">
+              Submit Task
+            </button>
+          </div>
           <div id="terminal"></div>
           <div
             class="input-line"
@@ -326,7 +340,7 @@
         resizeTerminal()
 
         // Automatically run the agent
-        const command = 'bash ./app/run_agent.sh\n'
+        const command = 'bash ./run_agent.sh\n'
         socket.emit('terminal_input', { data: command })
         appendOutput('$ ' + command, 'info')
       })
@@ -374,6 +388,20 @@
         document.getElementById('terminal').innerHTML =
           '<div class="info-box">💡 Terminal cleared</div>'
         buffer = ''
+      }
+
+      // Submit task handler
+      function submitTask() {
+        if (isTerminalReady) {
+          // Display the command
+          appendOutput('$ Submit Task\n')
+          // Send to server
+          socket.emit('terminal_input', {
+            data: 'Submit Task\n',
+          })
+        } else {
+          alert('Terminal is not ready. Please wait...')
+        }
       }
 
       // Append output to terminal

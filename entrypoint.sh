@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Set Oracle environment variables
+export LD_LIBRARY_PATH=/opt/oracle/instantclient_21_4:$LD_LIBRARY_PATH
+export ORACLE_HOME=/opt/oracle/instantclient_21_4
+
 # Clean up any stale X sockets
 rm -f /tmp/.X11-unix/X1 /tmp/.X1-lock 2>/dev/null
 
