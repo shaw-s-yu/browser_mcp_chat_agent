@@ -56,56 +56,128 @@ cd <repository-directory>
 - **VNC Screen:** The right pane displays a live VNC session of the browser running within the Docker container.
 - **Automated Agent:** The system automatically starts a browser automation agent that can perform tasks based on user input.
 
-## Adding New Actions
+## Add New Workflow
 
-To add new automated actions, you need to create SQL queries, prompt templates, and register them in the action mapper.
+There are two types of workflows you can create:
 
-### Step 1: Create a New SQL Query
+### Type 1: Simple Workflow (No Database)
+
+For workflows that don't require fetching data from the database, follow this approach:
+
+**Example:** [src/prompts/open_home_page.md](src/prompts/open_home_page.md)
+
+#### Steps:
+
+1. Navigate to `src/prompts/`
+2. Create a new Markdown file, e.g., `my_simple_workflow.md`
+3. The file should have only two sections:
+   ```markdown
+   ## Description
+   [Brief description of what this workflow does]
+
+   ## Instruction
+   [Detailed step-by-step instructions for the browser automation]
+   [Example: Navigate to home page, click login button, etc.]
+   ```
+
+#### Example Structure:
+```markdown
+## Description
+Open the application home page and navigate to the dashboard.
+
+## Instruction
+1. Navigate to http://localhost:5000
+2. Wait for the page to load
+3. Click on the Dashboard menu
+4. Verify you are on the dashboard page
+```
+
+#### No Registration Needed
+Simple workflows don't need to be registered in `action_mapper.json` unless they will be triggered via the `RUN_xxx_ACTION` mechanism.
+
+---
+
+### Type 2: Workflow with Database (Requires Data Fetching)
+
+For workflows that need to fetch data from the database and use it in the instructions, follow this approach:
+
+**Example:** [src/prompts/submit_task.md](src/prompts/submit_task.md)
+
+#### Step 1: Create a SQL Query
 
 1. Navigate to `src/db/query/`
 2. Create a new SQL file, e.g., `my_new_query.sql`
-3. Write your SQL query that will be executed to fetch data needed for your action
-
-### Step 2: Create a New Prompt Template
-
-1. Navigate to `src/prompts/`
-2. Create a new Markdown file, e.g., `my_new_action.md`
-3. The file should follow this structure:
-   ```markdown
-   ## Description
-   [Brief description of what this action does]
-
-   ## Instruction
-   RUN_MY_NEW_ACTION or `the actual steps`
-
-   ## Template
-   [Step-by-step instructions for the AI agent]
-   [Include variables from CSV data like <column_name>]
-   [These will be replaced with actual data from the SQL query results]
+3. Write your SQL query to fetch the data you need:
+   ```sql
+   SELECT task_cd, description, sub_task_cd, user_id, sub_task_shortname, date 
+   FROM tasks 
+   WHERE status = 'pending'
    ```
 
-**Important:** If your action requires using both SQL data and a template:
-- Put the action name (e.g., `RUN_MY_NEW_ACTION`) in the **Instruction** section
-- Add a **Template** section with step-by-step instructions that reference CSV columns as `<column_name>`
-- When the action is triggered, the system will:
-  1. Execute the SQL query to get data (saved as CSV)
-  2. Use the Template section to generate instructions with actual data substituted
+#### Step 2: Create a Prompt Template
 
-**Example:** See [src/prompts/submit_task.md](src/prompts/submit_task.md) for a complete example showing how to use actions with templates and SQL data together.
+1. Navigate to `src/prompts/`
+2. Create a new Markdown file, e.g., `my_workflow_with_data.md`
+3. The file should have three sections:
+   ```markdown
+   ## Description
+   [Brief description of what this workflow does]
 
-### Step 3: Register in action_mapper.json
+   ## Instruction
+   RUN_MY_WORKFLOW_ACTION
+
+   ## Template
+   [Step-by-step instructions with placeholders]
+   [Use <column_name> for data from SQL query results]
+   ```
+
+#### Example Structure:
+```markdown
+## Description
+Submit a task with details fetched from the database.
+
+## Instruction
+RUN_SUBMIT_TASK_ACTION
+
+## Template
+1. Navigate to the submission page
+2. Enter Task Code: <task_cd>
+3. Enter Description: <description>
+4. Enter Sub Task Code: <sub_task_cd>
+5. Enter User ID: <user_id>
+6. Enter Sub Task Shortname: <sub_task_shortname>
+7. Enter Date: <date>
+8. Click Submit Button
+9. Verify confirmation message
+```
+
+#### Step 3: Register in action_mapper.json
 
 1. Open `src/action_mapper.json`
-2. Add a new entry with the action name:
+2. Add a new entry mapping the action to the SQL file and prompt file:
    ```json
    {
-       "RUN_MY_NEW_ACTION": {
-           "prompt_file": "my_new_action.md",
+       "RUN_SUBMIT_TASK_ACTION": {
+           "prompt_file": "my_workflow_with_data.md",
            "sql": "my_new_query.sql"
        }
    }
    ```
-3. The action name must follow the format: `RUN_<action_name>_ACTION`
+
+#### Important Notes:
+- Action names must follow the format: `RUN_<WORKFLOW_NAME>_ACTION`
+- The `Instruction` section must contain exactly the action name (e.g., `RUN_SUBMIT_TASK_ACTION`)
+- Column names in the `Template` section must match your SQL query results
+- Use `<column_name>` format for placeholders - they will be automatically replaced with actual database values
+- Each row from the SQL query will generate a separate workflow execution
+
+#### How It Works:
+1. When the AI responds with `RUN_SUBMIT_TASK_ACTION`:
+2. The system looks up the action in `action_mapper.json`
+3. Executes the SQL query from `src/db/query/my_new_query.sql`
+4. Reads each row from the CSV results
+5. Generates instructions by replacing `<column_name>` with actual values from the database
+6. Sends the populated instructions to the browser agent for automation
 
 ## Oracle Database Configuration
 
